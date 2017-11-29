@@ -1,0 +1,183 @@
+---
+title: "ggplot2-lesson"
+author: "Kyle Shedd"
+date: "November 29, 2017"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+## Dowload data and load packages
+Download yearly salmon permit values from KNB website.
+```{r}
+suppressPackageStartupMessages({
+  library(ggplot2)
+  library(tidyr)
+  library(dplyr)
+})
+
+# https://knb.ecoinformatics.org/#view/urn:uuid:e05865d7-678d-4513-9061-2ab7d979f8e7
+# Search 'permit value'
+permits <- read.csv("data/Yearly_SalmonPermitValues.csv", stringsAsFactors = FALSE)
+str(permits)
+```
+
+## Exploratory plots with ggplot2
+Plot our permit data, look at permit value (x) vs. stddev (y).
+```{r}
+ggplot(permits, aes(Value, StdDev)) + 
+  geom_point()
+
+# same as
+ggplot(permits) + 
+  geom_point(aes(Value, StdDev))
+
+# same as
+ggplot() + 
+  geom_point(data = permits, aes(Value, StdDev))
+```
+
+## More complex plots
+More complex plot with gear group as color. Here we see there are a couple very valuable setnet sites. Perhaps data errors?
+```{r}
+ggplot(permits, aes(Value, StdDev, color = Gear)) +
+  geom_point()
+```
+
+Even more complex, add a size parameter. Note the huge range for that one setnet site.
+```{r}
+ggplot(permits, aes(Value, StdDev, color = Gear, size = Range)) +
+  geom_point()
+```
+
+## Histogram
+Specify binwidth or it will throw a warning message.
+```{r}
+ggplot(permits, aes(Value)) +
+  geom_histogram(binwidth = 1e4)
+```
+
+## Boxplot
+Some seriously right skewed data, especially for drift and seine.
+```{r}
+ggplot(permits, aes(Gear, Value)) +
+  geom_boxplot()
+```
+
+## Violin plot
+Use 'dplyr' to filter permits for only "Cook Inlet". Make Violin plot of value by gear.
+Usually a good idea to also show points as well, however, caution with overplotting.
+Can use 'pch' instead of 'shape' within 'geom_point'.
+```{r}
+permits_ci <- permits %>% 
+  filter(Region == "Cook Inlet")
+
+ggplot(permits_ci, aes(Gear, Value)) +
+  geom_violin() + 
+  geom_point(shape = 1, position = "jitter")
+```
+
+## Add model
+Default method for 'geom_smooth' is LOESS.
+```{r}
+ggplot(permits, aes(Value, StdDev)) +
+  geom_point() + 
+  geom_smooth(method = "lm")
+```
+
+## Set plot limits
+Filter for SE seine permits.
+Create a plot with points and lines since it is time-series data.
+Can modify axes by using 'scale_y_continuous', note that if we only want to change one of the 'limits', can leave the other as NA and ggplot will keep what it had.
+```{r}
+permits_se_seine <- permits %>% 
+  filter(Region == "Southeast",
+         Gear == "Purse Seine")
+
+ggplot(permits_se_seine, aes(Year, Value)) +
+  geom_point() +
+  geom_line() +
+  scale_y_continuous(limits = c(0, NA)) +
+  scale_x_continuous(breaks = seq(1985, 2015, by = 5))
+```
+
+## Change plot limits manually
+Use 'coord_cartesian' to avoid having the "buffer" space on either side of our axes.
+```{r}
+ggplot(permits_se_seine, aes(Year, Value)) + 
+  geom_point() +
+  geom_line() +
+  coord_cartesian(xlim = c(2000, max(permits_se_seine$Year)),
+                  ylim = c(0, max(permits_se_seine$Value)))
+```
+
+## Change color scales
+Change from scientific notation to numbers. Easiest to define a function outside of ggplot and pass the function to ggplot.
+Can specify manually or use 'color_brewer'.
+```{r}
+value_formatter <- function(val) {
+  format(val, scientific = FALSE)
+}
+
+ggplot(permits, aes(Value, StdDev, color = Gear)) +
+  geom_point() +
+  scale_x_continuous(labels = value_formatter) +
+  scale_color_manual(values = c("red", "orange", "yellow", "green", "blue", "purple", "violet"))
+
+# Change color and make x-axis log scaled
+ggplot(permits, aes(Value, StdDev, color = Gear)) +
+  geom_point() +
+  scale_color_brewer(palette = "Set1") +
+  scale_x_log10(labels = value_formatter)
+```
+
+## Multi-pane time series
+Use 'facet_wrap' for multi-pane, this uses the '~' as in modeling.
+```{r}
+ggplot(permits_ci, aes(Year, Value)) +
+  geom_point() +
+  geom_line() +
+  facet_wrap(~ Gear, ncol = 1)
+
+
+ggplot(permits_ci, aes(Year, Value)) +
+  geom_point() +
+  geom_line() +
+  facet_wrap(~ Gear, dir = "v")
+```
+
+## Customize layout
+Remove background and grid lines.
+This can be done for each plot or by setting the global options at the top of your script.
+Use 'ggsave' to save the last plot that has been plotted, it defaults to your wd.
+Can also save ggplots to an object.
+To get a ggplot to show up in an RMarkdown, need to wrap with print(), i.e. 'print(my_plot)'
+```{r}
+theme_set(theme_classic())
+
+ggplot(permits, aes(Value, StdDev, color = Gear)) +
+  geom_point() +
+  scale_x_continuous(labels = value_formatter)
+
+my_theme <- theme_classic(base_size = 12) +
+  theme(legend.position = "bottom")
+
+ggplot(permits, aes(Value, StdDev, color = Gear)) +
+  geom_point() +
+  scale_x_continuous(labels = value_formatter) +
+  my_theme
+
+ggsave(filename = "figures/my_plot.pdf")
+ggsave(filename = "figures/my_plot.png", width = 6, height = 6)
+ggsave(filename = "figures/my_plot_hires.png", width = 6, height = 6, dpi = 600)
+
+my_plot <- ggplot(permits, aes(Value, StdDev, color = Gear)) +
+  geom_point() +
+  scale_x_continuous(labels = value_formatter) +
+  my_theme
+```
+
+## Plotting multiple plots
+Use either 'grid.arrange' from the 'gridExtra' package or 'plot_grid' from the 'cowplot' package.
+Cowplot is more helpful for aligning multiple plots by their axes, as opposed to grid.arrange.
+
