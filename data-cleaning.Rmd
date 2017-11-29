@@ -4,7 +4,7 @@ author: "Kyle Shedd"
 date: "November 28, 2017"
 output: html_document
 editor_options: 
-  chunk_output_type: inline
+  chunk_output_type: console
 ---
 
 Read in salmon catch data that was downloaded from the [KNB database](https://knb.ecoinformatics.org/knb/d1/mn/v2/object/df35b.302.1)
