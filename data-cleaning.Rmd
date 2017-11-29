@@ -9,7 +9,7 @@ editor_options:
 
 Read in salmon catch data that was downloaded from the [KNB database](https://knb.ecoinformatics.org/knb/d1/mn/v2/object/df35b.302.1)
 ```{r}
-catch <- read.csv("df35b.302.1.csv", stringsAsFactors = FALSE)
+catch <- read.csv("data/df35b.302.1.csv", stringsAsFactors = FALSE)
 ```
 
 Load required libraries
@@ -94,7 +94,7 @@ large_sse_catches %>%
 
 Read in regional definitions and join the Regional definitions with catch data.
 ```{r}
-region_defs <- read.csv("df35b.303.1.csv", stringsAsFactors = FALSE)
+region_defs <- read.csv("data/df35b.303.1.csv", stringsAsFactors = FALSE)
 
 catch %>%
   group_by(Region) %>%
