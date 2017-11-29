@@ -1,0 +1,120 @@
+---
+title: "data-cleaning"
+author: "Kyle Shedd"
+date: "November 28, 2017"
+output: html_document
+editor_options: 
+  chunk_output_type: inline
+---
+
+Read in salmon catch data that was downloaded from the [KNB database](https://knb.ecoinformatics.org/knb/d1/mn/v2/object/df35b.302.1)
+```{r}
+catch <- read.csv("df35b.302.1.csv", stringsAsFactors = FALSE)
+```
+
+Load required libraries
+```{r}
+library(dplyr)
+library(tidyr)
+```
+
+Convert our data from a "wide" format to a "tall" format (tidy). First remove any un-needed or derived columns.
+```{r}
+catch <- catch %>% 
+  select(-All, -notesRegCode)
+```
+
+Next use 'gather' to make "tall".
+```{r}
+catch <- catch %>%
+  gather(species, catch, -Region, -Year)
+```
+
+Check for data errors in catch values.
+```{r}
+range(catch$catch)
+summary(catch)
+catch_integecr <- as.integer(catch$catch)
+which(is.na(catch_integecr))
+catch[401, "catch"] <- 1
+catch <- catch %>%
+  mutate(catch = as.integer(catch))
+summary(catch)
+```
+
+Check metatdata and verify that catch is in 1000s of fish.
+```{r}
+catch <- catch %>%
+  mutate(catch = catch * 1000)
+summary(catch)
+```
+
+Compute mean catch by region.
+```{r}
+catch %>%
+  group_by(Region) %>%
+  summarise(mean_catch = mean(catch))
+```
+
+How many rows in each group?
+```{r}
+catch %>%
+  group_by(Region) %>%
+  summarise(n = n())
+```
+
+Filter forr only Southern Southeast catches.
+```{r}
+sse_catches <- catch %>%
+  filter(Region == "SSE")
+```
+
+Filter for large catches.
+```{r}
+large_catches <- catch %>%
+  filter(catch > 1000000)
+summary(large_catches)
+```
+
+Filter for large catches in SSE.
+```{r}
+large_sse_catches <- catch %>%
+  filter(catch > 1000000 & Region == "SSE")
+summary(large_sse_catches)
+```
+
+Sort large SSE catches
+```{r}
+large_sse_catches %>%
+  arrange(species, catch)
+
+large_sse_catches %>%
+  arrange(desc(species))
+```
+
+Read in regional definitions and join the Regional definitions with catch data.
+```{r}
+region_defs <- read.csv("df35b.303.1.csv", stringsAsFactors = FALSE)
+
+catch %>%
+  group_by(Region) %>%
+  summarise(tota_catch = sum(catch)) %>%
+  left_join(region_defs, by = c("Region" = "code"))
+```
+
+Example with 'separate' and 'unite'
+```{r}
+dates_df <- data.frame(date = c("5/24/1930",
+                                "5/25/1930",
+                                "5/26/1930",
+                                "5/27/1930",
+                                "5/28/1930"),
+                       stringsAsFactors = FALSE)
+
+dates_df <- dates_df %>% 
+  separate(date, c("month", "day", "year"), "/")
+
+dates_df %>% 
+  unite(date, year, month, day, sep = "-")
+```
+
