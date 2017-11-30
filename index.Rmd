@@ -3,28 +3,43 @@ title: "my-website"
 author: "Kyle Shedd"
 date: "November 29, 2017"
 output: html_document
+editor_options: 
+  chunk_output_type: console
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+```{r, echo=FALSE}
+suppressPackageStartupMessages({
+  library(leaflet)
+  library(dplyr)
+  library(tidyr)
+  library(ggplot2)
+  library(DT)
+})
 ```
 
-## R Markdown
-
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
-
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
-
-```{r cars}
-summary(cars)
+## Load escapement data from file
+This file came from [KNB](https://knb.ecoinformatics.org/knb/d1/mn/v2/object/knb.92020.1).
+```{r}
+escapement <- read.csv("data/knb.92020.1.csv", 
+                       stringsAsFactors = FALSE)
 ```
 
-## Including Plots
+## Determine median annual escapement by species
+Create pipeline and plot object.
+```{r}
+median_esc <- escapement %>% 
+  separate(sampleDate, c("Year", "Month", "Day"), sep = "-") %>% 
+  group_by(Species, Year, Location) %>% 
+  summarise(escapement = sum(DailyCount)) %>% 
+  group_by(Species) %>% 
+  summarise(median_escapement = median(escapement))
 
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-plot(pressure)
+ggplot(median_esc, aes(Species, median_escapement)) +
+  geom_col() +
+  coord_flip()
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+## Interactive table
+```{r}
+datatable(median_esc)
+```
