@@ -7,7 +7,7 @@ editor_options:
   chunk_output_type: console
 ---
 
-```{r, echo=FALSE}
+```{r, echo = FALSE}
 suppressPackageStartupMessages({
   library(leaflet)
   library(dplyr)
@@ -19,7 +19,7 @@ suppressPackageStartupMessages({
 
 ## Load escapement data from file
 This file came from [KNB](https://knb.ecoinformatics.org/knb/d1/mn/v2/object/knb.92020.1).
-```{r}
+```{r, cache = TRUE}
 escapement <- read.csv("data/knb.92020.1.csv", 
                        stringsAsFactors = FALSE)
 ```
@@ -42,4 +42,21 @@ ggplot(median_esc, aes(Species, median_escapement)) +
 ## Interactive table
 ```{r}
 datatable(median_esc)
+```
+
+## Create a map with leaflet
+First filter for distinct locations and drop `NA` values.
+```{r}
+locations <- escapement %>% 
+  distinct(Location, Latitude, Longitude) %>% 
+  drop_na()
+
+datatable(locations)
+```
+
+Add map.
+```{r}
+leaflet(locations) %>% 
+  addTiles() %>% 
+  addMarkers(~ -abs(Longitude), ~ Latitude, popup = ~ Location)
 ```
